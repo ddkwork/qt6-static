@@ -141,8 +141,10 @@ jobs:
             -developer-build \
             -nomake examples -nomake tests \
             -no-opengl \
+            -prefix ../qt_host_install \
             --cmake-generator Ninja
-          cmake --build . --parallel $(nproc) --target host_tools
+          cmake --build . --parallel $(nproc)
+          cmake --install .
 
       - name: Build Qt Android
         working-directory: qt_build
@@ -154,7 +156,7 @@ jobs:
             -android-ndk "$ANDROID_NDK_ROOT" \
             -android-sdk "$ANDROID_SDK_ROOT" \
             -android-abis arm64-v8a \
-            -qt-host-path ../qt_build_host \
+            -qt-host-path ../qt_host_install \
             -optimized-tools -opensource -confirm-license \
             -strip -reduce-exports \
             -nomake examples -nomake tests \
