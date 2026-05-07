@@ -11,6 +11,9 @@ permissions:
 env:
   QT_VERSION: "6.11.0"
   RELEASE_ZIP_PREFIX: qt-static
+  # 使用自定义 PAT（可选），如果没有则回退到 GITHUB_TOKEN
+  # 在 Settings → Secrets and variables → Actions 中添加 GH_PAT
+  GH_TOKEN: ${{ secrets.GH_PAT || secrets.tk }}
 
 jobs:
   build-windows:
@@ -204,6 +207,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ env.GH_TOKEN }}
+
+      - name: Configure git credentials
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          # 配置 credential helper 用于 push tag
+          git config --global credential.helper store
+          echo "https://x-access-token:${{ env.GH_TOKEN }}@github.com" > ~/.git-credentials
 
       - name: Delete existing release
         uses: dev-drprasad/delete-older-releases@v0.3.4
@@ -211,7 +223,7 @@ jobs:
           keep_latest: 0
           delete_tag_pattern: "ci-*"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ env.GH_TOKEN }}
 
       - name: Generate timestamp tag
         id: tag_info
@@ -222,8 +234,6 @@ jobs:
 
       - name: Push tag
         run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
           git tag -f "${{ steps.tag_info.outputs.tag_name }}"
           git push origin "${{ steps.tag_info.outputs.tag_name }}" --force
 
@@ -239,6 +249,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag_info.outputs.tag_name }}
           files: release/*
+          token: ${{ env.GH_TOKEN }}
           body: |
             Qt Static Build - CI Release
 
