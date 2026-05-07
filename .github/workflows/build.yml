@@ -47,10 +47,14 @@ jobs:
             -DCMAKE_CXX_FLAGS="/await:strict" `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
           cmake --build . --parallel 16
+          cmake --install .
+
+      - name: Clean up source to save space
+        run: |
+          Remove-Item -Recurse -Force qt
 
       - name: Package
         run: |
-          cmake --install qt_build --prefix ../qt_static
           7z a "${{ env.RELEASE_ZIP_PREFIX }}-windows.zip" qt_static
 
       - uses: actions/upload-artifact@v4
@@ -104,6 +108,10 @@ jobs:
             --cmake-generator Ninja
           cmake --build . --parallel $(nproc)
           cmake --install .
+
+      - name: Clean up source to save space
+        run: |
+          rm -rf qt
 
       - name: Package
         run: |
@@ -165,6 +173,10 @@ jobs:
           cmake --build . --parallel $(nproc)
           cmake --install .
 
+      - name: Clean up source to save space
+        run: |
+          rm -rf qt qt_build_host qt_host_install
+
       - name: Package
         run: |
           7z a "${{ env.RELEASE_ZIP_PREFIX }}-android.zip" qt_static
@@ -199,10 +211,14 @@ jobs:
             -- \
             -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
           cmake --build . --parallel $(sysctl -n hw.ncpu)
+          cmake --install .
+
+      - name: Clean up source to save space
+        run: |
+          rm -rf qt
 
       - name: Package
         run: |
-          cmake --install qt_build --prefix ../qt_static
           7z a "${{ env.RELEASE_ZIP_PREFIX }}-macos.zip" qt_static
 
       - uses: actions/upload-artifact@v4
