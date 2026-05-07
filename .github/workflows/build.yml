@@ -27,7 +27,7 @@ jobs:
       - name: Clone Qt
         run: |
           git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
-          mkdir qt_build
+          mkdir qt_build qt_build_host
           cd qt
           perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
 
@@ -86,6 +86,8 @@ jobs:
             libxcb-randr0-dev libxcb-render-util0-dev \
             libxcb-xinerama0-dev libxcb-xkb-dev \
             libxkbcommon-dev libxkbcommon-x11-dev \
+            libgl1-mesa-dev libegl-dev \
+            libharfbuzz-dev \
             ninja-build
 
       - name: Build Qt Linux
@@ -131,6 +133,17 @@ jobs:
       - name: Setup Android SDK & NDK
         uses: android-actions/setup-android@v3
 
+      - name: Build Host Qt (for Android cross-compilation)
+        working-directory: qt_build_host
+        env:
+          NINJA_STATUS: "[%f/%t %o/sec] "
+        run: |
+          ../qt/configure $(cat ../feature-flags.txt) \
+            -developer-build \
+            -nomake examples -nomake tests \
+            --cmake-generator Ninja
+          cmake --build . --parallel $(nproc) --target host_tools
+
       - name: Build Qt Android
         working-directory: qt_build
         env:
@@ -140,7 +153,8 @@ jobs:
             $(cat ../feature-flags.txt) \
             -android-ndk "$ANDROID_NDK_ROOT" \
             -android-sdk "$ANDROID_SDK_ROOT" \
-            -android-abi arm64-v8a \
+            -android-abis arm64-v8a \
+            -qt-host-path ../qt_build_host \
             -optimized-tools -opensource -confirm-license \
             -strip -reduce-exports \
             -nomake examples -nomake tests \
