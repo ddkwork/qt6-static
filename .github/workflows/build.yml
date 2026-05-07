@@ -97,11 +97,9 @@ jobs:
             -optimized-tools -fontconfig -system-freetype \
             -system-harfbuzz -system-pcre -system-zlib \
             -no-libudev -no-egl -no-glib -opengl desktop \
-            -opensource -confirm-license -static \
-            -prefix ../qt_static \
-            -release -strip -reduce-exports \
-            -make libs -nomake examples -nomake tests \
-            -no-feature-testlib -skip qtdeclarative/tests \
+            -opensource -confirm-license \
+            -strip -reduce-exports \
+            -nomake examples -nomake tests \
             --cmake-generator Ninja
           cmake --build . --parallel $(nproc)
           cmake --install .
@@ -139,15 +137,13 @@ jobs:
           NINJA_STATUS: "[%f/%t %o/sec] "
         run: |
           ../qt/configure \
-            -prefix ../qt_static \
             $(cat ../feature-flags.txt) \
             -android-ndk "$ANDROID_NDK_ROOT" \
             -android-sdk "$ANDROID_SDK_ROOT" \
             -android-abi arm64-v8a \
             -optimized-tools -opensource -confirm-license \
-            -static -release -strip -reduce-exports \
-            -make libs -nomake examples -nomake tests \
-            -no-feature-testlib -skip qtdeclarative/tests \
+            -strip -reduce-exports \
+            -nomake examples -nomake tests \
             -no-feature-xcb -no-feature-glib -opengl es2 \
             --cmake-generator Ninja
           cmake --build . --parallel $(nproc)
