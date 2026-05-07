@@ -60,7 +60,7 @@ jobs:
 
   build-linux:
     timeout-minutes: 360
-    runs-on: ubuntu-22.04-large
+    runs-on: ubuntu-latest-large
 
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
 
   build-android:
     timeout-minutes: 360
-    runs-on: ubuntu-22.04-large
+    runs-on: ubuntu-latest-large
 
     steps:
       - uses: actions/checkout@v4
@@ -164,7 +164,7 @@ jobs:
 
   build-macos:
     timeout-minutes: 360
-    runs-on: macos-14-large
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -199,7 +199,7 @@ jobs:
 
   release:
     needs: [build-windows, build-linux, build-android, build-macos]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-large
     permissions:
       contents: write
 
