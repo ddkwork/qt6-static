@@ -1,0 +1,271 @@
+name: Build static Qt
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: "6.11.0"
+  RELEASE_ZIP_PREFIX: qt-static
+
+jobs:
+  build-windows:
+    timeout-minutes: 360
+    runs-on: windows-latest-large
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Clone Qt
+        run: |
+          git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
+          mkdir qt_build
+          cd qt
+          perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build Windows Qt
+        working-directory: qt_build
+        env:
+          CL: /MP
+          NINJA_STATUS: "[%f/%t %o/sec] "
+        run: |
+          $configArgs = Get-Content ..\feature-flags.txt | Where-Object { $_.Trim() -ne '' }
+          ..\qt\configure.bat @configArgs -G Ninja -- `
+            -DCMAKE_CXX_FLAGS="/await:strict" `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build . --parallel 16
+
+      - name: Package
+        run: |
+          cmake --install qt_build --prefix ../qt_static
+          7z a "${{ env.RELEASE_ZIP_PREFIX }}-windows.zip" qt_static
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-windows
+          path: "*.zip"
+
+  build-linux:
+    timeout-minutes: 360
+    runs-on: ubuntu-22.04-large
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Clone Qt
+        run: |
+          git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
+          mkdir qt_build
+          cd qt
+          perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
+
+      - name: Install Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libfontconfig1-dev libfreetype6-dev \
+            libx11-dev libxext-dev libxfixes-dev libxi-dev libxrender-dev \
+            libxcb1-dev libxcb-glx0-dev libxcb-keysyms1-dev \
+            libxcb-image0-dev libxcb-shm0-dev libxcb-icccm4-dev \
+            libxcb-sync0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+            libxcb-randr0-dev libxcb-render-util0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            ninja-build
+
+      - name: Build Qt Linux
+        working-directory: qt_build
+        env:
+          NINJA_STATUS: "[%f/%t %o/sec] "
+        run: |
+          ../qt/configure $(cat ../feature-flags.txt) \
+            -optimized-tools -fontconfig -system-freetype \
+            -system-harfbuzz -system-pcre -system-zlib \
+            -no-libudev -no-egl -no-glib -opengl desktop \
+            -opensource -confirm-license -static \
+            -prefix ../qt_static \
+            -release -strip -reduce-exports \
+            -make libs -nomake examples -nomake tests \
+            -no-feature-testlib -skip qtdeclarative/tests \
+            -G Ninja
+          cmake --build . --parallel $(nproc)
+          cmake --install .
+
+      - name: Package
+        run: |
+          7z a "${{ env.RELEASE_ZIP_PREFIX }}-linux.zip" qt_static
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-linux
+          path: "*.zip"
+
+  build-android:
+    timeout-minutes: 360
+    runs-on: ubuntu-22.04-large
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Clone Qt
+        run: |
+          git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
+          mkdir qt_build
+          cd qt
+          perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Qt Android
+        working-directory: qt_build
+        env:
+          NINJA_STATUS: "[%f/%t %o/sec] "
+        run: |
+          ../qt/configure \
+            -prefix ../qt_static \
+            $(cat ../feature-flags.txt) \
+            -android-ndk "$ANDROID_NDK_ROOT" \
+            -android-sdk "$ANDROID_SDK_ROOT" \
+            -android-abi arm64-v8a \
+            -optimized-tools -opensource -confirm-license \
+            -static -release -strip -reduce-exports \
+            -make libs -nomake examples -nomake tests \
+            -no-feature-testlib -skip qtdeclarative/tests \
+            -no-feature-xcb -no-feature-glib -opengl es2 \
+            -G Ninja
+          cmake --build . --parallel $(nproc)
+          cmake --install .
+
+      - name: Package
+        run: |
+          7z a "${{ env.RELEASE_ZIP_PREFIX }}-android.zip" qt_static
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-android
+          path: "*.zip"
+
+  build-macos:
+    timeout-minutes: 360
+    runs-on: macos-14-large
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Clone Qt
+        run: |
+          git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
+          mkdir qt_build
+          cd qt
+          perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
+
+      - name: Build macOS Qt
+        working-directory: qt_build
+        env:
+          NINJA_STATUS: "[%f/%t %o/sec] "
+        run: |
+          ../qt/configure $(cat ../feature-flags.txt) \
+            -G Ninja -- \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+          cmake --build . --parallel $(sysctl -n hw.ncpu)
+
+      - name: Package
+        run: |
+          cmake --install qt_build --prefix ../qt_static
+          7z a "${{ env.RELEASE_ZIP_PREFIX }}-macos.zip" qt_static
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qt-macos
+          path: "*.zip"
+
+  release:
+    needs: [build-windows, build-linux, build-android, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete existing release
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        with:
+          keep_latest: 0
+          delete_tag_pattern: "ci-*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate timestamp tag
+        id: tag_info
+        run: |
+          TAG_NAME="ci-v${{ env.QT_VERSION }}-$(date +%Y%m%d%H%M%S)"
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+
+      - name: Push tag
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -f "${{ steps.tag_info.outputs.tag_name }}"
+          git push origin "${{ steps.tag_info.outputs.tag_name }}" --force
+
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: release
+
+      - name: List releases
+        run: ls -lh release/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_info.outputs.tag_name }}
+          files: release/*
+          body: |
+            Qt Static Build - CI Release
+
+            **Qt Version:** v${{ env.QT_VERSION }}
+            **Build Date:** ${{ steps.tag_info.outputs.date }}
+            **Commit:** ${{ github.sha }}
+            **Branch:** ${{ github.ref_name }}
+
+            ## Platforms
+            - ✅ Windows x64 (MSVC, Static)
+            - ✅ Linux x64_64 (GCC, Static, X11)
+            - ✅ macOS Universal (Apple Clang, x86_64 + ARM64)
+            - ✅ Android ARM64-v8a (NDK, OpenGL ES)
+
+            ## Features
+            - Modules: QtCore, QtGui, QtWidgets, QtSvg, QtMultimedia, QtTools
+            - Optimized for size (`-strip -reduce-exports`)
+            - No examples or tests included
+          draft: false
+          prerelease: true
+          overwrite_files: true
+
+      - name: Create shorthand tags
+        run: |
+          git tag -d v${{ env.QT_VERSION }} || true
+          git tag v${{ env.QT_VERSION }} -m v${{ env.QT_VERSION }}
+          git push -f origin v${{ env.QT_VERSION }}
+          git tag -d v${{ env.QT_VERSION%.* }} || true
+          git tag v${{ env.QT_VERSION%.* }} -m v${{ env.QT_VERSION%.* }}
+          git push -f origin v${{ env.QT_VERSION%.* }}
