@@ -277,6 +277,7 @@ jobs:
           git tag -d v${{ env.QT_VERSION }} || true
           git tag v${{ env.QT_VERSION }} -m v${{ env.QT_VERSION }}
           git push -f origin v${{ env.QT_VERSION }}
-          git tag -d v${{ env.QT_VERSION%.* }} || true
-          git tag v${{ env.QT_VERSION%.* }} -m v${{ env.QT_VERSION%.* }}
-          git push -f origin v${{ env.QT_VERSION%.* }}
+          SHORT_VERSION="${QT_VERSION%.*}"
+          git tag -d v${SHORT_VERSION} || true
+          git tag v${SHORT_VERSION} -m v${SHORT_VERSION}
+          git push -f origin v${SHORT_VERSION}
