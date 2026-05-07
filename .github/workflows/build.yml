@@ -86,8 +86,6 @@ jobs:
             libxcb-randr0-dev libxcb-render-util0-dev \
             libxcb-xinerama0-dev libxcb-xkb-dev \
             libxkbcommon-dev libxkbcommon-x11-dev \
-            libgl1-mesa-dev libegl-dev \
-            libharfbuzz-dev \
             ninja-build
 
       - name: Build Qt Linux
@@ -138,9 +136,10 @@ jobs:
         env:
           NINJA_STATUS: "[%f/%t %o/sec] "
         run: |
-          ../qt/configure $(cat ../feature-flags.txt) \
+          ../qt/configure \
             -developer-build \
             -nomake examples -nomake tests \
+            -no-opengl \
             --cmake-generator Ninja
           cmake --build . --parallel $(nproc) --target host_tools
 
