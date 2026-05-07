@@ -27,7 +27,7 @@ jobs:
       - name: Clone Qt
         run: |
           git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
-          mkdir qt_build qt_build_host
+          mkdir qt_build
           cd qt
           perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
 
@@ -126,7 +126,7 @@ jobs:
       - name: Clone Qt
         run: |
           git clone https://github.com/qt/qt5.git qt -b "${{env.QT_VERSION}}"
-          mkdir qt_build
+          mkdir qt_build qt_build_host
           cd qt
           perl init-repository.pl -f --module-subset=qtbase,qtdeclarative,qtsvg,qtshadertools,qtmultimedia,qttools,qttranslations
 
